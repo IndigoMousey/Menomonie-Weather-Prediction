@@ -4,20 +4,23 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
+from sklearn.preprocessing import StandardScaler
 
 
-class LiftData(Dataset):
+class WeatherData(Dataset):
     def __init__(self):
         # Training set
-        df = pd.read_csv("TrainClean.csv")
-        self.X = torch.tensor(df.iloc[:, 1:-1].to_numpy(), dtype=torch.float)
-        self.y = torch.tensor(df.iloc[:, -1].to_numpy(), dtype=torch.float)
-        self.len = len(df)
+        df = pd.read_csv("Menomonie_Weather.csv")
+        df.dropna(inplace=True)
+        X = torch.tensor(df.iloc[:, 1:].to_numpy(), dtype=torch.float)
+        y = torch.tensor(df.iloc[1:][["Avg_Temp", "Precipitation"]].to_numpy(), dtype=torch.float)
 
-        # Validation set
-        df_valid = pd.read_csv("ValidClean.csv")
-        self.X_valid = torch.tensor(df_valid.iloc[:, 1:-1].to_numpy(), dtype=torch.float)
-        self.y_valid = torch.tensor(df_valid.iloc[:, -1].to_numpy(), dtype=torch.float)
+        scaler = StandardScaler()
+        X_scaled = scaler.transform(X)
+
+        self.X = torch.tensor(X_scaled, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+        self.len = len(self.X)
 
     def __getitem__(self, item):
         return self.X[item], self.y[item]
@@ -47,7 +50,7 @@ class BenchPress(nn.Module):
 
 def trainNN(epochs=5, batch_size=16, lr=0.001):
     # Load the Dataset
-    ld = LiftData()
+    ld = WeatherData()
 
     # Create data loader
     data_loader = DataLoader(ld, batch_size=batch_size, drop_last=False, shuffle=True)
@@ -86,7 +89,4 @@ def trainNN(epochs=5, batch_size=16, lr=0.001):
     return bp
 
 
-# SVR Performance on Validation set (MSE): 634.6198690427688
-# and R^2 = 0.78427481498
-# SVR had C=50.0, default gamma, and normalized features
 trainNN(epochs=10)
