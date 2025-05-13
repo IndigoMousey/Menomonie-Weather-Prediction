@@ -1,88 +1,75 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.arima.model import ARIMA
-from sklearn.metrics import mean_squared_error
+from pmdarima import auto_arima
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-df = pd.read_excel("Menomonie_Weather.xlsx")
-df.dropna(inplace=True)
+# Load and preprocess data
+def load_weather_data(file_path):
+    df = pd.read_csv(file_path)
+    df.dropna(inplace=True)
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+    df['Avg_Temp'] = df['Avg_Temp'].astype(float)
+    df['Precipitation'] = df['Precipitation'].astype(float)
+    return df
 
-plt.figure(figsize=(14, 7))
-plt.plot(df.index, df["Avg_Temp"], label='Average Temp')
-plt.xlabel('Date')
-plt.ylabel('Average Temp')
-plt.legend()
-plt.show()
+# Forecast function
+def forecast_variable(series, label, train_days=15, forecast_days=30):
 
-original = adfuller(df["Avg_Temp"])
+    start_index = - (train_days + forecast_days)
+    test_index = -forecast_days
+    end_index = None  # till the end
 
-print(f"ADF Statistic (Original): {original[0]:.4f}")
-print(f"p-value (Original): {original[1]:.4f}")
+    train = series.iloc[start_index:test_index+1]
+    test = series.iloc[test_index:end_index]
 
-if original[1] < 0.05:
-    print("Interpretation: The original series is Stationary.\n")
-else:
-    print("Interpretation: The original series is Non-Stationary.\n")
+    # print(f"\n--- Auto ARIMA for {label} ---")
+    # auto_model = auto_arima(
+    #     train,
+    #     seasonal=True,
+    #     stepwise=False,
+    #     suppress_warnings=True,
+    #     trace=True,
+    # )
+    # best_order = auto_model.order
+    # print(f"Selected ARIMA order for {label}: {best_order}")
 
-# Apply first-order differencing
-df['Avg_Temp_Diff'] = df['Avg_Temp'].diff()
+    model = ARIMA(train, order=(5,1,1) )
+    model_fit = model.fit()
 
-# Perform the Augmented Dickey-Fuller test on the differenced series
-result_diff = adfuller(df["Avg_Temp_Diff"].dropna())
-print(f"ADF Statistic (Differenced): {result_diff[0]:.4f}")
-print(f"p-value (Differenced): {result_diff[1]:.4f}")
-if result_diff[1] < 0.05:
-    print("Interpretation: The differenced series is Stationary.")
-else:
-    print("Interpretation: The differenced series is Non-Stationary.")
+    forecast_result = model_fit.get_forecast(steps=forecast_days)
+    forecast = forecast_result.predicted_mean
 
-plt.figure(figsize=(14, 7))
-plt.plot(df.index, df['Avg_Temp_Diff'], label='Differenced Avg_Temp Price', color='orange')
-plt.xlabel('Date')
-plt.ylabel('Differenced Avg_Temp Price')
-plt.legend()
-plt.show()
+    forecast_index = test.index
+    rmse = np.sqrt(mean_squared_error(test, forecast))
+    print(f"RMSE for {label} forecast: {rmse:.2f}")
 
-fig, axes = plt.subplots(1, 2, figsize=(16, 4))
+    # Plot
+    plt.figure(figsize=(14, 7))
+    plt.plot(test.index, test, label='Actual', color='red')
+    plt.plot(forecast_index, forecast, label='Forecast', color='orange')
+    plt.title(f'{label} Forecast')
+    plt.xlabel('Date')
+    plt.ylabel(label)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
-# ACF plot
-plot_acf(df['Avg_Temp_Diff'].dropna(), lags=40, ax=axes[0])
-axes[0].set_title('Autocorrelation Function (ACF)')
 
-# PACF plot
-plot_pacf(df['Avg_Temp_Diff'].dropna(), lags=40, ax=axes[1])
-axes[1].set_title('Partial Autocorrelation Function (PACF)')
+# Main script execution
+def main():
+    #Load dataset
+    file_path = "Menomonie_Weather.csv"
+    df = load_weather_data(file_path)
 
-plt.tight_layout()
-plt.show()
+    #Create time series for Temperature
+    forecast_variable(df['Max_Temp'], "Max_Temp")
+    # forecast_variable(df['Min_Temp'], "Min_Temp")
+    # forecast_variable(df['Avg_Temp'], "Avg_Temp")
 
-# Split data into train and test
-train_size = int(len(df) * 0.8)
-train, test = df.iloc[:train_size], df.iloc[train_size:]
 
-model = ARIMA(train["Avg_Temp"], order=(1,1,1))
-model_fit = model.fit()
-
-forecast = model_fit.forecast(steps=len(test))
-
-plt.figure(figsize=(14,7))
-plt.plot(train.index, train["Avg_Temp"], label='Train', color='blue')
-plt.plot(test.index, test["Avg_Temp"], label='Test', color='green')
-plt.plot(test.index, forecast, label='Forecast', color='orange')
-plt.title('Avg_Temp Forecast')
-plt.xlabel('Date')
-plt.ylabel('Avg_Temp')
-plt.legend()
-plt.show()
-
-print(f"AIC: {model_fit.aic}")
-print(f"BIC: {model_fit.bic}")
-
-forecast = forecast[:len(test)]
-test_close = test["Avg_Temp"][:len(forecast)]
-
-# Calculate RMSE
-rmse = np.sqrt(mean_squared_error(test_close, forecast))
-print(f"RMSE: {rmse:.4f}")
+if __name__ == "__main__":
+    main()
