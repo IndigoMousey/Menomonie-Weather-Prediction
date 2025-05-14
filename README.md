@@ -6,11 +6,11 @@ The data we used to train our model comes from the exapnded version of NOAA's NO
 # Data Cleaning
 We changed the M (Missing) tags in the data to "nan" to flag them easier. We changed the T (Trace) values to half of their respective cutoffs because we felt it was important to include that the was precipitation, no matter how trivial an amount. Specifically, for rainfall all T values were changes to .0025 inches and for snowfall T values were changed to .025 inches. We also deleted February 29th, 2020 for the purpose of potentially easier computation in the time series analysis by keeping our years to a static 365 days. This was a potentially unnecessary change. During runtime we delete rows that contain missing data. Of the 1937 days there are 57 that contain missing data. That's just shy of 3% of the total data, or equivalent to 1 missing day per month. This isn't ideal, but it's a loss we're okay accepting.
 # Time Series Analysis
-Time series models are used to predict future values based on historical data​. We used an ARIMA model​. It utilizes 3 parameters: p(autoregression), d(differencing), and q(moving average)​
-Autoregression: The relationship between current observations and past observations​
-Differencing: Difference between observations and previous/different observations (stationary)​
-Moving Average: The dependency between an observation and error.
-
-The RMSE for our two metrics were:
-Max_Temp: RMSE = 8.41
+Time series models are used to predict future values based on historical data​. We used an ARIMA model​. It utilizes 3 parameters: p(autoregression), d(differencing), and q(moving average)​  
+Autoregression: The relationship between current observations and past observations​  
+Differencing: Difference between observations and previous/different observations (stationary)​  
+Moving Average: The dependency between an observation and error.  
+  
+The RMSE for our two metrics were:  
+Max_Temp: RMSE = 8.41  
 Min_Temp: RMSE = 8.47
